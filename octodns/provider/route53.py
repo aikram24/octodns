@@ -228,6 +228,7 @@ class Route53Provider(BaseProvider):
     HEALTH_CHECK_VERSION = '0000'
 
     def __init__(self, id, access_key_id, secret_access_key, max_changes=100,
+                 ignore_record=['SOA', 'AliasTarget'],
                  *args, **kwargs):
         self.max_changes = max_changes
         self.log = logging.getLogger('Route53Provider[{}]'.format(id))
@@ -240,6 +241,8 @@ class Route53Provider(BaseProvider):
         self._r53_zones = None
         self._r53_rrsets = {}
         self._health_checks = None
+
+        self.ignore_record = ignore_record
 
     @property
     def r53_zones(self):
@@ -431,7 +434,9 @@ class Route53Provider(BaseProvider):
                 record_name = zone.hostname_from_fqdn(rrset['Name'])
                 record_name = _octal_replace(record_name)
                 record_type = rrset['Type']
-                if record_type == 'SOA':
+                if record_type in self.ignore_record:
+                    self.log.warning("{} is an {} record. Skipping...".format(
+                        rrset['Name'], rrset['Type']))
                     continue
                 data = getattr(self, '_data_for_{}'.format(record_type))(rrset)
                 records[record_name][record_type].append(data)

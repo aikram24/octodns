@@ -138,6 +138,7 @@ class DynProvider(BaseProvider):
     _sess_create_lock = Lock()
 
     def __init__(self, id, customer, username, password,
+                 ignore_record=['soa_records', 'alias_records'],
                  traffic_directors_enabled=False, *args, **kwargs):
         self.log = getLogger('DynProvider[{}]'.format(id))
         self.log.debug('__init__: id=%s, customer=%s, username=%s, '
@@ -153,6 +154,8 @@ class DynProvider(BaseProvider):
         self._cache = {}
         self._traffic_directors = None
         self._traffic_director_monitors = None
+
+        self.ignore_record = ignore_record
 
     @property
     def SUPPORTS_GEO(self):
@@ -355,7 +358,8 @@ class DynProvider(BaseProvider):
         if dyn_zone:
             values = defaultdict(lambda: defaultdict(list))
             for _type, records in dyn_zone.get_all_records().items():
-                if _type == 'soa_records':
+                if _type in self.ignore_record:
+                    self.log.warning("%s record. Skipping...", _type)
                     continue
                 _type = self.RECORDS_TO_TYPE[_type]
                 for record in records:
